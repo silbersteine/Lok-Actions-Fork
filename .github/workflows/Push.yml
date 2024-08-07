@@ -87,4 +87,5 @@ jobs:
       - name: Push Localization Files to Lokalise
         run: |
           chmod +x ./upload_to_lokalise.sh
-          cat changed_files.txt | xargs -P 6 -I {} bash -c './upload_to_lokalise.sh upload_file "{}"'
+          cat changed_files.txt | xargs -P 6 -I {} bash -c './upload_to_lokalise.sh upload_file "{}"' > upload_log.txt 2>&1
+          cat upload_log.txt
