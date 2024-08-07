@@ -100,6 +100,12 @@ jobs:
             echo "Starting upload for $file"
             while [ $attempt -lt $max_retries ]; do
               echo "Attempt $((attempt + 1)) for $file"
+              echo "Running lokalise2 command with the following parameters:"
+              echo "VAR_LOKALISE_API_TOKEN: $VAR_LOKALISE_API_TOKEN"
+              echo "VAR_LOKALISE_PROJECT_ID: $VAR_LOKALISE_PROJECT_ID"
+              echo "VAR_LOKALISE_SOURCE_LANG_ISO: $VAR_LOKALISE_SOURCE_LANG_ISO"
+              echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
+
               output=$(./bin/lokalise2 --token="${VAR_LOKALISE_API_TOKEN}" \
                 --project-id="${VAR_LOKALISE_PROJECT_ID}" \
                 file upload \
@@ -114,7 +120,7 @@ jobs:
                 --tag-inserted-keys \
                 --tag-skipped-keys=true \
                 --tag-updated-keys \
-                --tags $GITHUB_REF_NAME 2>&1)
+                --tags "$GITHUB_REF_NAME" 2>&1)
 
               echo "Output from upload:"
               echo "$output"
