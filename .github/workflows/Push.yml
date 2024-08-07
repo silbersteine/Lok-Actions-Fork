@@ -97,7 +97,9 @@ jobs:
             local max_retries=3
             local sleep_time=1
 
+            echo "Starting upload for $file"
             while [ $attempt -lt $max_retries ]; do
+              echo "Attempt $((attempt + 1)) for $file"
               output=$(./bin/lokalise2 --token="${VAR_LOKALISE_API_TOKEN}" \
                 --project-id="${VAR_LOKALISE_PROJECT_ID}" \
                 file upload \
@@ -114,6 +116,7 @@ jobs:
                 --tag-updated-keys \
                 --tags $GITHUB_REF_NAME 2>&1)
 
+              echo "Output from upload:"
               echo "$output"
               
               http_code=$(echo "$output" | grep -oP 'HTTP/\d+\.\d+ \K\d+')
