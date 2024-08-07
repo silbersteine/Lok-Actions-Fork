@@ -141,6 +141,6 @@ jobs:
           cat changed_files.txt | xargs -P 6 -I {} bash -c 'upload_file "{}"'
           result=$?
           if [ $result -ne 0 ]; then
-            echo "Error during file upload"
+            echo "Error during file upload with exit code $result"
             exit $result
           fi
