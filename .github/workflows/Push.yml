@@ -2,9 +2,8 @@ name: Push to Lokalise
 run-name: Push to Lokalise [${{ github.ref_name }}] ${{ github.event.after }}
 on:
   workflow_dispatch:
-  pull_request:
-    branches:
-      - '**'
+  pull_request_target:
+    types: [closed]
 
 jobs:
   build:
@@ -23,17 +22,11 @@ jobs:
       - name: Install Lokalise CLI
         run: curl -sfL https://raw.githubusercontent.com/lokalise/lokalise-cli-2-go/master/install.sh | sh
 
-      - name: Debug Environment Variables
-        run: |
-          echo "GitHub Event Name: ${{ github.event_name }}"
-          echo "GitHub Event Pull Request Base Ref: ${{ github.event.pull_request.base.ref }}"
-          echo "GitHub Default Branch: ${{ github.event.repository.default_branch }}"
-
       - name: Determine upstream branch
         id: determine-branch
         run: |
           echo "Starting upstream branch determination"
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          if [[ "${{ github.event_name }}" == "pull_request_target" ]]; then
             if [[ -n "${{ github.event.pull_request.base.ref }}" ]]; then
               echo "Pull request base ref is not empty"
               echo "${{ github.event.pull_request.base.ref }}" > upstream_branch.txt
