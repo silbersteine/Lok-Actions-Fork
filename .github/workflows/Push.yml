@@ -116,14 +116,11 @@ jobs:
                 --tag-skipped-keys=true \
                 --tag-updated-keys \
                 --tags "$GITHUB_REF_NAME" 2>&1)
-              
-              exit_code=$?
 
               echo "Output from upload:"
               echo "$output"
-
-              if [ $exit_code -ne 0 ]; then
-                echo "lokalise2 command failed with exit code $exit_code"
+              
+              if [ -z "$output" ]; then
                 attempt=$((attempt + 1))
                 echo "Attempt $attempt failed with no output. Retrying in $sleep_time seconds..."
                 sleep $sleep_time
@@ -138,21 +135,12 @@ jobs:
             return 1
           }
 
-          while IFS= read -r file; do
-            echo "Uploading $file"
-            upload_file "$file"
-            result=$?
-            if [ $result -ne 0 ]; then
-              echo "Error uploading $file"
-              exit $result
-            fi
-          done < changed_files.txt
-          while IFS= read -r file; do
-            echo "Uploading $file"
-            upload_file "$file"
-            result=$?
-            if [ $result -ne 0 ]; then
-              echo "Error uploading $file"
-              exit $result
-            fi
-          done < changed_files.txt
+          export -f upload_file
+
+          echo "Starting parallel upload"
+          cat changed_files.txt | xargs -P 6 -I {} bash -c 'upload_file "{}"'
+          result=$?
+          if [ $result -ne 0 ]; then
+            echo "Error during file upload"
+            exit $result
+          fi
