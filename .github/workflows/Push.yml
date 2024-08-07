@@ -120,7 +120,7 @@ jobs:
               echo "Output from upload:"
               echo "$output"
               
-              if echo "$output" | grep -q 'API request error 400'; then
+              if echo "$output" | grep -q 'API request error 429'; then
                 attempt=$((attempt + 1))
                 echo "Attempt $attempt failed with API request error 400. Retrying in $sleep_time seconds..."
                 sleep $sleep_time
