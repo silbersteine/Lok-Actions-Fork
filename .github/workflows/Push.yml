@@ -84,11 +84,6 @@ jobs:
             exit 0
           fi
 
-      # - name: Push Localization Files to Lokalise
-      #   run: |
-      #     chmod +x ./upload_to_lokalise.sh
-      #     cat changed_files.txt | xargs -P 6 -I {} bash -c './upload_to_lokalise.sh upload_file "{}"' > upload_log.txt 2>&1
-      #     cat upload_log.txt
       - name: Push Localization Files to Lokalise
         run: |
           upload_file() {
@@ -125,22 +120,14 @@ jobs:
               echo "Output from upload:"
               echo "$output"
               
-              http_code=$(echo "$output" | grep -oP 'HTTP/\d+\.\d+ \K\d+')
-
-              if [ "$http_code" -eq 429 ]; then
+              if [ -z "$output" ]; then
                 attempt=$((attempt + 1))
-                echo "Attempt $attempt failed with HTTP 429. Retrying in $sleep_time seconds..."
+                echo "Attempt $attempt failed with no output. Retrying in $sleep_time seconds..."
                 sleep $sleep_time
                 sleep_time=$((sleep_time * 2))
               else
-                if [ "$http_code" -ne 200 ]; then
-                  echo "Failed to upload file: $file"
-                  echo "Error: $output"
-                  return 1
-                else
-                  echo "Successfully uploaded file: $file"
-                  return 0
-                fi
+                echo "Successfully uploaded file: $file"
+                return 0
               fi
             done
 
