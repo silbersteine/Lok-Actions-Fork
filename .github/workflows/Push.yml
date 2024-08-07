@@ -84,8 +84,20 @@ jobs:
             exit 0
           fi
 
+      # - name: Push Localization Files to Lokalise
+      #   run: |
+      #     chmod +x ./upload_to_lokalise.sh
+      #     cat changed_files.txt | xargs -P 6 -I {} bash -c './upload_to_lokalise.sh upload_file "{}"' > upload_log.txt 2>&1
+      #     cat upload_log.txt
       - name: Push Localization Files to Lokalise
         run: |
           chmod +x ./upload_to_lokalise.sh
-          cat changed_files.txt | xargs -P 6 -I {} bash -c './upload_to_lokalise.sh upload_file "{}"' > upload_log.txt 2>&1
-          cat upload_log.txt
+          while IFS= read -r file; do
+            echo "Uploading $file"
+            ./upload_to_lokalise.sh upload_file "$file"
+            result=$?
+            if [ $result -ne 0 ]; then
+              echo "Error uploading $file"
+              exit $result
+            fi
+          done < changed_files.txt
