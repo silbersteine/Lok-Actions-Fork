@@ -2,8 +2,9 @@ name: Push to Lokalise
 run-name: Push to Lokalise [${{ github.ref_name }}] ${{ github.event.after }}
 on:
   workflow_dispatch:
-  pull_request_target:
-    types: [closed]
+  # Uncomment to run on PR merge:
+  # pull_request_target:
+  #   types: [closed]
 
 jobs:
   build:
@@ -13,6 +14,7 @@ jobs:
       VAR_LOKALISE_PROJECT_ID: ${{ vars.LOKALISE_PROJECT_ID }}
       VAR_LOKALISE_SOURCE_LANG_ISO: ${{ vars.LOKALISE_SOURCE_LANG }}
       VAR_FOLDER_PATH: ${{ vars.LOKALISE_TRANSLATIONS_PATH }}
+      VAR_FILE_EXT: ${{ vars.LOKALISE_FILE_EXTENSION }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -44,31 +46,14 @@ jobs:
         id: get-changed-files
         run: |
           UPSTREAM_BRANCH=$(cat upstream_branch.txt)
-          echo "Upstream Branch: $UPSTREAM_BRANCH"
           git fetch origin $UPSTREAM_BRANCH
           if [ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]; then
             echo "Comparing last two commits on the default branch"
-            git diff --name-only HEAD~1 HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**.json" > changed_files.txt
+            git diff --name-only HEAD~1 HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**${{ env.VAR_FILE_EXT }}" > changed_files.txt
           else
             echo "Comparing branch to upstream branch"
-            git diff --name-only origin/$UPSTREAM_BRANCH...HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**.json" > changed_files.txt
+            git diff --name-only origin/$UPSTREAM_BRANCH...HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**${{ env.VAR_FILE_EXT }}" > changed_files.txt
           fi
-
-      - name: Upload Changed Files Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: changed-files
-          path: changed_files.txt
-
-      - name: Download Changed Files Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: changed-files
-
-      - name: Print Changed Files
-        run: |
-          echo "Changed JSON files:"
-          cat changed_files.txt
 
       - name: Check for Changed Files
         run: |
@@ -87,13 +72,6 @@ jobs:
 
             echo "Starting upload for $file"
             while [ $attempt -lt $max_retries ]; do
-              echo "Attempt $((attempt + 1)) for $file"
-              echo "Running lokalise2 command with the following parameters:"
-              echo "VAR_LOKALISE_API_TOKEN: $VAR_LOKALISE_API_TOKEN"
-              echo "VAR_LOKALISE_PROJECT_ID: $VAR_LOKALISE_PROJECT_ID"
-              echo "VAR_LOKALISE_SOURCE_LANG_ISO: $VAR_LOKALISE_SOURCE_LANG_ISO"
-              echo "GITHUB_REF_NAME: $GITHUB_REF_NAME"
-
               output=$(./bin/lokalise2 --token="${VAR_LOKALISE_API_TOKEN}" \
                 --project-id="${VAR_LOKALISE_PROJECT_ID}" \
                 file upload \
@@ -109,9 +87,6 @@ jobs:
                 --tag-skipped-keys=true \
                 --tag-updated-keys \
                 --tags "$GITHUB_REF_NAME" 2>&1)
-
-              echo "Output from upload:"
-              echo "$output"
 
               if echo "$output" | grep -q 'API request error 429'; then
                 attempt=$((attempt + 1))
@@ -133,7 +108,6 @@ jobs:
 
           export -f upload_file
 
-          echo "Starting parallel upload"
           cat changed_files.txt | xargs -P 6 -I {} bash -c 'upload_file "{}"'
           result=$?
           if [ $result -ne 0 ]; then
