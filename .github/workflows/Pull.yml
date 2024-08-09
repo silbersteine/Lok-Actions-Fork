@@ -48,8 +48,6 @@ jobs:
 
       - name: Pull Localization Files from Lokalise
         run: |
-          set -x
-
           download_files() {
             local attempt=0
             local max_retries=3
@@ -70,6 +68,9 @@ jobs:
               echo "Filter Data: translated"
               echo "Include Tags: ${GITHUB_REF_NAME}"
 
+              # Temporarily disable exit on error
+              set +e
+
               # Run the lokalise2 command and capture the output
               output=$(./bin/lokalise2 --token="${VAR_LOKALISE_API_TOKEN}" \
                 --project-id="${VAR_LOKALISE_PROJECT_ID}" \
@@ -83,6 +84,9 @@ jobs:
 
               exit_code=$?
               echo "Lokalise2 command exit code: $exit_code"
+
+              # Re-enable exit on error
+              set -e
 
               # Output the captured output for debugging
               echo "Lokalise2 command output:"
@@ -113,7 +117,7 @@ jobs:
 
           download_files
           result=$?
-          if [ $result -ne 0]; then
+          if [ $result -ne 0 ]; then
             echo "Error during file download with exit code $result"
             exit $result
           fi
