@@ -14,15 +14,12 @@ jobs:
       VAR_LOKALISE_PROJECT_ID: ${{ vars.LOKALISE_PROJECT_ID }}
       VAR_LOKALISE_SOURCE_LANG_ISO: ${{ vars.LOKALISE_SOURCE_LANG }}
       VAR_FOLDER_PATH: ${{ vars.LOKALISE_TRANSLATIONS_PATH }}
-      VAR_FILE_EXT: ${{ vars.LOKALISE_FILE_EXTENSION }}
+      VAR_FILE_FORMAT: ${{ vars.LOKALISE_FILE_FORMAT }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-      - name: Install Lokalise CLI
-        run: curl -sfL https://raw.githubusercontent.com/lokalise/lokalise-cli-2-go/master/install.sh | sh
 
       - name: Determine upstream branch
         id: determine-branch
@@ -49,10 +46,10 @@ jobs:
           git fetch origin $UPSTREAM_BRANCH
           if [ "${{ github.ref_name }}" == "${{ github.event.repository.default_branch }}" ]; then
             echo "Comparing last two commits on the default branch"
-            git diff --name-only HEAD~1 HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**${{ env.VAR_FILE_EXT }}" > changed_files.txt
+            git diff --name-only HEAD~1 HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**.${{ env.VAR_FILE_FORMAT }}" > changed_files.txt
           else
             echo "Comparing branch to upstream branch"
-            git diff --name-only origin/$UPSTREAM_BRANCH...HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**${{ env.VAR_FILE_EXT }}" > changed_files.txt
+            git diff --name-only origin/$UPSTREAM_BRANCH...HEAD -- "${{ env.VAR_FOLDER_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/**.${{ env.VAR_FILE_FORMAT }}" > changed_files.txt
           fi
 
       - name: Check for Changed Files
@@ -62,6 +59,14 @@ jobs:
             exit 0
           fi
 
+      - name: Install Lokalise CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/lokalise/lokalise-cli-2-go/master/install.sh | sh
+          if [ $? -ne 0 ]; then
+            echo "Failed to install Lokalise CLI"
+            exit 1
+          fi
+        
       - name: Push Localization Files to Lokalise
         run: |
           upload_file() {

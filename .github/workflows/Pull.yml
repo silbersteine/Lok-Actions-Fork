@@ -1,0 +1,135 @@
+name: Pull from Lokalise
+run-name: Pull from Lokalise [${{ github.ref_name }}] ${{ github.event.after }}
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_PREVIOUS_COMMIT: ${{ github.event.after }}
+      GITHUB_CURRENT_COMMIT: ${{ github.event.before }}
+      VAR_LOKALISE_API_TOKEN: ${{ secrets.LOKALISE_API_TOKEN }}
+      VAR_LOKALISE_PROJECT_ID: ${{ vars.LOKALISE_PROJECT_ID }}
+      VAR_LOKALISE_SOURCE_LANG_ISO: ${{ vars.LOKALISE_SOURCE_LANG }}
+      VAR_LOKALISE_TRANSLATIONS_PATH: ${{ vars.LOKALISE_TRANSLATIONS_PATH }}
+      VAR_LOKALISE_BRANCH_MARKER: ${{ vars.LOKALISE_BRANCH_MARKER }}
+      VAR_FILE_FORMAT: ${{ vars.LOKALISE_FILE_FORMAT }}
+      GITHUB_BASE_BRANCH_NAME: ${{ github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create branch name
+        run: |
+          SHORT_SHA=${GITHUB_SHA::6}  
+          echo "VAR_LOCALIZATION_BRANCH=${{ env.VAR_LOKALISE_BRANCH_MARKER }}_${{ env.GITHUB_BASE_BRANCH_NAME }}_$SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Check if branch exists
+        run: |
+          git fetch origin
+          if git show-ref --verify --quiet "refs/heads/${{ env.VAR_LOCALIZATION_BRANCH }}"; then
+            echo "Branch ${VAR_LOCALIZATION_BRANCH} already exists. Stopping the action."
+            exit 1
+          else
+            echo "Branch ${VAR_LOCALIZATION_BRANCH} does not exist. Proceeding with the workflow."
+          fi
+
+      - name: Install Lokalise CLI
+        run: |
+          curl -sfL https://raw.githubusercontent.com/lokalise/lokalise-cli-2-go/master/install.sh | sh
+          if [ $? -ne 0 ]; then
+            echo "Failed to install Lokalise CLI"
+            exit 1
+          fi
+
+      - name: Checkout branch
+        run: git checkout -b "${{ env.VAR_LOCALIZATION_BRANCH}}"
+
+      - name: Pull localization files from Lokalise
+        run: |
+          RETRIES=0
+          MAX_RETRIES=3
+          BACKOFF=1
+
+          while [ $RETRIES -le $MAX_RETRIES ]; do
+            OUTPUT=$(./bin/lokalise2 --token="${{ env.VAR_LOKALISE_API_TOKEN }}" \
+                                    --project-id="${{ env.VAR_LOKALISE_PROJECT_ID }}" \
+                                    file download \
+                                    --format "${{ env.VAR_FILE_FORMAT }}" \
+                                    --original-filenames=true \
+                                    --directory-prefix="/" \
+                                    --export-sort a_z \
+                                    --filter-data translated \
+                                    --include-tags=${{ github.ref_name }} 2>&1)
+
+            echo "$OUTPUT"
+
+            if echo "$OUTPUT" | grep -q "API request error 429"; then
+              if [ $RETRIES -lt $MAX_RETRIES ]; then
+                echo "Received 429 error, retrying after $(( BACKOFF )) seconds..."
+                sleep $(( BACKOFF ))
+                RETRIES=$(( RETRIES + 1 ))
+                BACKOFF=$(( BACKOFF * 2 ))
+              else
+                echo "Max retries reached. Exiting."
+                exit 1
+              fi
+            elif echo "$OUTPUT" | grep -q "API request error"; then
+              echo "Received non-429 API request error. Exiting."
+              exit 1
+            else
+              echo "Lokalise files pulled successfully."
+              break
+            fi
+          done
+
+      - name: Commit to localization branch
+        run: |
+          echo "Git status before adding files:"
+          git status
+
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+          echo "Adding files to staging area:"
+          git add "./${{ vars.LOKALISE_TRANSLATIONS_PATH }}/**/*.${{ env.VAR_FILE_FORMAT }}" -- ':!./${{ vars.LOKALISE_TRANSLATIONS_PATH }}/${{ env.VAR_LOKALISE_SOURCE_LANG_ISO }}/*.${{ env.VAR_FILE_FORMAT }}'
+
+          echo "Git status after adding files:"
+          git status
+
+          if [[ -z $(git status --untracked-files=no --porcelain) ]]; then
+            echo "No changes to commit"
+          else
+            echo "Committing changes"
+            git commit -m 'Translations update'
+            
+            echo "Git log after commit:"
+            git log -1
+
+            echo "Pushing changes to remote repository"
+            git push origin "${{ env.VAR_LOCALIZATION_BRANCH }}"
+          fi
+
+      - name: Create Pull Request
+        run: |
+            echo "Git status before creating PR:"
+            git status
+
+            # Print details of uncommitted changes
+            echo "Uncommitted changes:"
+            git diff --name-only  # Show modified files not yet staged
+            git diff --cached --name-only  # Show staged files
+
+            # Ensure git configuration is correct
+            git config --global user.name "${GITHUB_ACTOR}"
+            git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
+
+            # Create the pull request
+            echo "Creating Pull Request..."
+            gh pr create --base ${{ env.GITHUB_BASE_BRANCH_NAME }} \
+                        --head "${{ env.VAR_LOCALIZATION_BRANCH }}" \
+                        --title "Lokalise translations update" \
+                        --body ""
+
+            echo "Pull Request created successfully."
