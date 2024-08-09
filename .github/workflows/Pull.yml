@@ -48,6 +48,10 @@ jobs:
 
       - name: Pull localization files from Lokalise
         run: |
+          RETRIES=0
+          MAX_RETRIES=3
+          BACKOFF=1
+
           echo "Starting Lokalise file pull with the following parameters:"
           echo "RETRIES: $RETRIES"
           echo "MAX_RETRIES: $MAX_RETRIES"
@@ -57,10 +61,6 @@ jobs:
           echo "VAR_FILE_FORMAT: $VAR_FILE_FORMAT"
           echo "GITHUB_BASE_BRANCH_NAME: $GITHUB_BASE_BRANCH_NAME"
           echo "VAR_LOCALIZATION_BRANCH: $VAR_LOCALIZATION_BRANCH"
-
-          RETRIES=0
-          MAX_RETRIES=3
-          BACKOFF=1
 
           # Ensure Lokalise CLI is installed
           if ! [ -x "$(command -v ./bin/lokalise2)" ]; then
