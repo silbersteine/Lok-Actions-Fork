@@ -48,10 +48,6 @@ jobs:
 
       - name: Pull localization files from Lokalise
         run: |
-          RETRIES=0
-          MAX_RETRIES=3
-          BACKOFF=1
-          
           echo "Starting Lokalise file pull with the following parameters:"
           echo "RETRIES: $RETRIES"
           echo "MAX_RETRIES: $MAX_RETRIES"
@@ -61,6 +57,16 @@ jobs:
           echo "VAR_FILE_FORMAT: $VAR_FILE_FORMAT"
           echo "GITHUB_BASE_BRANCH_NAME: $GITHUB_BASE_BRANCH_NAME"
           echo "VAR_LOCALIZATION_BRANCH: $VAR_LOCALIZATION_BRANCH"
+
+          RETRIES=0
+          MAX_RETRIES=3
+          BACKOFF=1
+
+          # Ensure Lokalise CLI is installed
+          if ! [ -x "$(command -v ./bin/lokalise2)" ]; then
+            echo "Error: lokalise2 CLI is not installed or not executable." >&2
+            exit 1
+          fi
 
           while [ $RETRIES -le $MAX_RETRIES ]; do
             echo "Attempt $(( RETRIES + 1 )) of $(( MAX_RETRIES + 1 ))"
@@ -74,23 +80,32 @@ jobs:
                                     --export-sort a_z \
                                     --filter-data translated \
                                     --include-tags=${{ github.ref_name }} 2>&1)
+            
+            EXIT_STATUS=$?
 
+            echo "Lokalise command exit status: $EXIT_STATUS"
             echo "Lokalise command output:"
             echo "$OUTPUT"
 
-            if echo "$OUTPUT" | grep -q "API request error 429"; then
-              if [ $RETRIES -lt $MAX_RETRIES ]; then
-                echo "Received 429 error, retrying after $(( BACKOFF )) seconds..."
-                sleep $(( BACKOFF ))
-                RETRIES=$(( RETRIES + 1 ))
-                BACKOFF=$(( BACKOFF * 2 ))
+            if [ $EXIT_STATUS -ne 0 ]; then
+              echo "Lokalise CLI command failed with status $EXIT_STATUS"
+              if echo "$OUTPUT" | grep -q "API request error 429"; then
+                if [ $RETRIES -lt $MAX_RETRIES ]; then
+                  echo "Received 429 error, retrying after $(( BACKOFF )) seconds..."
+                  sleep $(( BACKOFF ))
+                  RETRIES=$(( RETRIES + 1 ))
+                  BACKOFF=$(( BACKOFF * 2 ))
+                else
+                  echo "Max retries reached. Exiting."
+                  exit 1
+                fi
+              elif echo "$OUTPUT" | grep -q "API request error"; then
+                echo "Received non-429 API request error. Exiting."
+                exit 1
               else
-                echo "Max retries reached. Exiting."
+                echo "Unknown error occurred. Exiting."
                 exit 1
               fi
-            elif echo "$OUTPUT" | grep -q "API request error"; then
-              echo "Received non-429 API request error. Exiting."
-              exit 1
             else
               echo "Lokalise files pulled successfully."
               break
