@@ -48,11 +48,23 @@ jobs:
 
       - name: Pull localization files from Lokalise
         run: |
+          echo "Starting Lokalise file pull with the following parameters:"
+          echo "RETRIES: $RETRIES"
+          echo "MAX_RETRIES: $MAX_RETRIES"
+          echo "BACKOFF: $BACKOFF"
+          echo "VAR_LOKALISE_API_TOKEN: ${#VAR_LOKALISE_API_TOKEN} characters"
+          echo "VAR_LOKALISE_PROJECT_ID: $VAR_LOKALISE_PROJECT_ID"
+          echo "VAR_FILE_FORMAT: $VAR_FILE_FORMAT"
+          echo "GITHUB_BASE_BRANCH_NAME: $GITHUB_BASE_BRANCH_NAME"
+          echo "VAR_LOCALIZATION_BRANCH: $VAR_LOCALIZATION_BRANCH"
+
           RETRIES=0
           MAX_RETRIES=3
           BACKOFF=1
 
           while [ $RETRIES -le $MAX_RETRIES ]; do
+            echo "Attempt $(( RETRIES + 1 )) of $(( MAX_RETRIES + 1 ))"
+
             OUTPUT=$(./bin/lokalise2 --token="${{ env.VAR_LOKALISE_API_TOKEN }}" \
                                     --project-id="${{ env.VAR_LOKALISE_PROJECT_ID }}" \
                                     file download \
@@ -63,6 +75,7 @@ jobs:
                                     --filter-data translated \
                                     --include-tags=${{ github.ref_name }} 2>&1)
 
+            echo "Lokalise command output:"
             echo "$OUTPUT"
 
             if echo "$OUTPUT" | grep -q "API request error 429"; then
