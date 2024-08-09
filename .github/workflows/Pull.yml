@@ -116,7 +116,7 @@ jobs:
           git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
           echo "Adding files to staging area:"
-          git add "./lokalise_temp/**/*.${{ env.VAR_FILE_FORMAT }}" --force
+          git add lokalise_temp --all
 
           echo "Git status after adding files:"
           git status
