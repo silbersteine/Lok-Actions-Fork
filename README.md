@@ -7,3 +7,6 @@ If you're using the default GITHUB_TOKEN, ensure it has the right permissions. B
 
     Choose whether GitHub Actions can create pull requests or submit approving pull request reviews.
 Allow GitHub Actions to create and approve pull requests
+
+
+make sure to assign proper filenames to keys on Lokalise. if your directory in project is locales/%LANG_ISO%/, then the filenames must be locales/%LANG_ISO%/FILENAME
