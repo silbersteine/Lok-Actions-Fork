@@ -68,7 +68,7 @@ jobs:
                 --directory-prefix="/" \
                 --export-sort a_z \
                 --filter-data=translated \
-                --unzip-to "./lokalise_temp" \
+                --unzip-to="${{ vars.LOKALISE_TRANSLATIONS_PATH }}" \
                 --include-tags="${GITHUB_REF_NAME}" 2>&1)
 
               exit_code=$?
@@ -116,7 +116,7 @@ jobs:
           git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
           echo "Adding files to staging area:"
-          git add lokalise_temp --all
+          git add "${{ vars.LOKALISE_TRANSLATIONS_PATH }}/**/*.${{ env.VAR_FILE_FORMAT }}" --force
 
           echo "Git status after adding files:"
           git status
