@@ -48,6 +48,8 @@ jobs:
 
       - name: Pull Localization Files from Lokalise
         run: |
+          set -x
+
           download_files() {
             local attempt=0
             local max_retries=3
@@ -111,7 +113,7 @@ jobs:
 
           download_files
           result=$?
-          if [ $result -ne 0 ]; then
+          if [ $result -ne 0]; then
             echo "Error during file download with exit code $result"
             exit $result
           fi
