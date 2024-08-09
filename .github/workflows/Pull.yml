@@ -53,20 +53,8 @@ jobs:
             local max_retries=3
             local sleep_time=1
 
-            echo "Starting download process"
-
             while [ $attempt -lt $max_retries ]; do
               echo "Attempt $((attempt + 1)) of $max_retries"
-
-              # Print the command we're about to run for full transparency
-              echo "Running lokalise2 command with the following parameters:"
-              echo "Token: ${#VAR_LOKALISE_API_TOKEN} characters (hidden for security)"
-              echo "Project ID: $VAR_LOKALISE_PROJECT_ID"
-              echo "Format: $VAR_FILE_FORMAT"
-              echo "Directory Prefix: /"
-              echo "Export Sort: a_z"
-              echo "Filter Data: translated"
-              echo "Include Tags: ${GITHUB_REF_NAME}"
 
               # Temporarily disable exit on error
               set +e
@@ -83,15 +71,11 @@ jobs:
                 --include-tags="${GITHUB_REF_NAME}" 2>&1)
 
               exit_code=$?
-              echo "Lokalise2 command exit code: $exit_code"
 
               # Re-enable exit on error
               set -e
 
-              # Output the captured output for debugging
-              echo "Lokalise2 command output:"
-              echo "$output"
-
+              # Process the output
               if [ $exit_code -ne 0 ]; then
                 if echo "$output" | grep -q 'API request error 429'; then
                   attempt=$((attempt + 1))
