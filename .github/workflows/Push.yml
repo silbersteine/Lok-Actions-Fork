@@ -15,6 +15,7 @@ jobs:
       VAR_LOKALISE_SOURCE_LANG_ISO: ${{ vars.LOKALISE_SOURCE_LANG }}
       VAR_FOLDER_PATH: ${{ vars.LOKALISE_TRANSLATIONS_PATH }}
       VAR_FILE_FORMAT: ${{ vars.LOKALISE_FILE_FORMAT }}
+      VAR_ADD_CLI_PARAMS: ${{ vars.LOKALISE_PUSH_ADDITIONAL_PARAMS }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -75,6 +76,13 @@ jobs:
             local max_retries=3
             local sleep_time=1
 
+            # Check if VAR_ADD_CLI_PARAMS is set and not empty
+            if [ -n "${VAR_ADD_CLI_PARAMS}" ]; then
+              additional_params="${VAR_ADD_CLI_PARAMS}"
+            else
+              additional_params=""
+            fi
+
             echo "Starting upload for $file"
             while [ $attempt -lt $max_retries ]; do
               output=$(./bin/lokalise2 --token="${VAR_LOKALISE_API_TOKEN}" \
@@ -91,7 +99,8 @@ jobs:
                 --tag-inserted-keys \
                 --tag-skipped-keys=true \
                 --tag-updated-keys \
-                --tags "$GITHUB_REF_NAME" 2>&1)
+                --tags "$GITHUB_REF_NAME" \
+                $additional_params 2>&1)
 
               if echo "$output" | grep -q 'API request error 429'; then
                 attempt=$((attempt + 1))
