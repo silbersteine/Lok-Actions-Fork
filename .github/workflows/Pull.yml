@@ -15,6 +15,7 @@ jobs:
       VAR_LOKALISE_TRANSLATIONS_PATH: ${{ vars.LOKALISE_TRANSLATIONS_PATH }}
       VAR_LOKALISE_BRANCH_MARKER: ${{ vars.LOKALISE_BRANCH_MARKER }}
       VAR_FILE_FORMAT: ${{ vars.LOKALISE_FILE_FORMAT }}
+      VAR_ADD_CLI_PARAMS: ${{ vars.LOKALISE_ADDITIONAL_PARAMS }}
       GITHUB_BASE_BRANCH_NAME: ${{ github.ref_name }}
       GH_TOKEN: ${{ github.token }}
     steps:
@@ -59,6 +60,13 @@ jobs:
               # Temporarily disable exit on error
               set +e
 
+              # Check if VAR_ADD_CLI_PARAMS is set and not empty
+              if [ -n "${VAR_ADD_CLI_PARAMS}" ]; then
+                additional_params="${VAR_ADD_CLI_PARAMS}"
+              else
+                additional_params=""
+              fi
+
               # Run the lokalise2 command and capture the output
               output=$(./bin/lokalise2 --token="${VAR_LOKALISE_API_TOKEN}" \
                 --project-id="${VAR_LOKALISE_PROJECT_ID}" \
@@ -68,7 +76,8 @@ jobs:
                 --directory-prefix="/" \
                 --export-sort a_z \
                 --filter-data=translated \
-                --include-tags="${GITHUB_REF_NAME}" 2>&1)
+                --include-tags="${GITHUB_REF_NAME}" \
+                $additional_params 2>&1)
 
               exit_code=$?
 
